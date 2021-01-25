@@ -1,6 +1,4 @@
-const _ = require('lodash');
 const debug = require('debug')('log4js:logstashUDP');
-const os = require('os');
 const dgram = require('dgram');
 const util = require('util');
 
@@ -22,36 +20,11 @@ function sendLog(udp, host, port, logObject, logError) {
   });
 }
 
-const defaultVersion = 1;
-const defaultExtraDataProvider = loggingEvent => {
-  if (loggingEvent.data.length > 1) {
-    const secondEvData = loggingEvent.data[1];
-    if (_.isPlainObject(secondEvData)) {
-      return {fields: secondEvData};
-    }
-  }
-  return {};
-};
-
 function logstashUDP(config, layout, logError) {
   const udp = dgram.createSocket('udp4');
-  const extraDataProvider = _.isFunction(config.extraDataProvider)
-    ? config.extraDataProvider
-    : defaultExtraDataProvider;
 
   function log(loggingEvent) {
-    const oriLogObject = {
-      '@version': defaultVersion,
-      '@timestamp': (new Date(loggingEvent.startTime)).toISOString(),
-      'host': os.hostname(),
-      'level': loggingEvent.level.levelStr.toUpperCase(),
-      'category': loggingEvent.categoryName,
-      'message': layout(loggingEvent)
-    };
-    const extraLogObject = extraDataProvider(loggingEvent) || {};
-    const logObject = _.assign(oriLogObject, extraLogObject);
-
-    sendLog(udp, config.host, config.port, logObject, logError);
+    sendLog(udp, config.host, config.port, layout(loggingEvent), logError);
   }
 
   log.shutdown = cb => udp.close(cb);
